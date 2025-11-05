@@ -324,6 +324,10 @@
             +
             <a href="https://golang.org/" target="_blank" rel="noopener">Go</a>
           </p>
+          <p class="opensource-message">
+            Free and Open Source Software • Contributions Welcome • Made with ❤️
+            for the Community
+          </p>
         </div>
       </div>
     </footer>
@@ -986,17 +990,13 @@ code {
 .footer-section p {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.7);
-  .footer-content {
-    margin: 0;
-    -columns: 1fr;
-  }
+  margin: 0;
+}
 
-  .footer-links {
-    display: flex;
-    flex-direction: column;
-    text-align: center;
-    gap: 0.5rem;
-  }
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .footer-links a {
@@ -1030,6 +1030,12 @@ code {
 
 .footer-bottom a:hover {
   text-decoration: underline;
+}
+
+.opensource-message {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.5rem;
 }
 
 .docker-image {
