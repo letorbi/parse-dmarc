@@ -21,6 +21,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: 1.25
+      - name: Create dist
+        run: mkdir -p internal/api/dist
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
