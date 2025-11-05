@@ -108,16 +108,25 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer func() { _ = store.Close() }()
 
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	server := api.NewServer(store, cfg.Server.Host, cfg.Server.Port)
+	serverErrChan := make(chan error, 1)
 	go func() {
-		if err := server.Start(); err != nil {
-			log.Fatalf("Server failed: %v", err)
-		}
+		serverErrChan <- server.Start(ctx)
 	}()
 
 	if serveOnly {
 		log.Println("Running in serve-only mode")
-		waitForSignal()
+		select {
+		case <-ctx.Done():
+			log.Println("Shutting down...")
+		case err := <-serverErrChan:
+			if err != nil {
+				return fmt.Errorf("server error: %w", err)
+			}
+		}
 		return nil
 	}
 
@@ -138,18 +147,19 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	ticker := time.NewTicker(time.Duration(fetchInterval) * time.Second)
 	defer ticker.Stop()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
 	for {
 		select {
 		case <-ticker.C:
 			if err := fetchReports(cfg, store); err != nil {
 				log.Printf("Fetch failed: %v", err)
 			}
-		case <-sigChan:
+		case <-ctx.Done():
 			log.Println("Shutting down...")
 			return nil
+		case err := <-serverErrChan:
+			if err != nil {
+				return fmt.Errorf("server error: %w", err)
+			}
 		}
 	}
 }
@@ -203,10 +213,4 @@ func fetchReports(cfg *config.Config, store *storage.Storage) error {
 
 	log.Printf("Successfully processed %d reports", processed)
 	return nil
-}
-
-func waitForSignal() {
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
 }

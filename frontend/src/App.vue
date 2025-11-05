@@ -55,7 +55,7 @@
         <div class="section">
           <h2 class="section-title">Top Sending Sources</h2>
           <div class="card">
-            <div class="source-list" v-if="topSources.length > 0">
+            <div class="source-list" v-if="topSources?.length > 0">
               <div
                 v-for="source in topSources"
                 :key="source.source_ip"
@@ -93,7 +93,7 @@
         <div class="section">
           <h2 class="section-title">Recent Reports</h2>
           <div class="card">
-            <div class="table-container" v-if="reports.length > 0">
+            <div class="table-container" v-if="reports?.length > 0">
               <table class="report-table">
                 <thead>
                   <tr>
@@ -170,7 +170,7 @@
               </div>
 
               <h4 class="detail-subtitle">
-                Records ({{ selectedReport.records.length }})
+                Records ({{ selectedReport?.records?.length || 0 }})
               </h4>
               <div class="records-list">
                 <div

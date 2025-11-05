@@ -1,12 +1,14 @@
 package api
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/goccy/go-json"
 
@@ -31,7 +33,7 @@ func NewServer(store *storage.Storage, host string, port int) *Server {
 }
 
 // Start starts the HTTP server
-func (s *Server) Start() error {
+func (s *Server) Start(ctx context.Context) error {
 	mux := http.NewServeMux()
 
 	// API routes
@@ -71,8 +73,27 @@ func (s *Server) Start() error {
 		})
 	}
 
+	server := &http.Server{
+		Addr:    s.addr,
+		Handler: s.corsMiddleware(mux),
+	}
+
+	go func() {
+		<-ctx.Done()
+		log.Println("Shutting down server...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Server shutdown error: %v", err)
+		}
+	}()
+
 	log.Printf("Starting server on %s", s.addr)
-	return http.ListenAndServe(s.addr, s.corsMiddleware(mux))
+	err = server.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 // corsMiddleware adds CORS headers

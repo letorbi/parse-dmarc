@@ -52,3 +52,5 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 .goreleaser-dist
+
+data
