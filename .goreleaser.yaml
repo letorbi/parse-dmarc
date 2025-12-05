@@ -133,3 +133,16 @@ milestones:
 
 announce:
   skip: "{{gt .Patch 0}}"
+
+homebrew_casks:
+  - name: parse-dmarc
+    binaries:
+      - parse-dmarc
+    repository:
+      owner: meysam81
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Formulae
+    homepage: https://github.com/meysam81/parse-dmarc
+    description: Single-binary, zero-dependency DMARC parser with a modern web dashboard.
+    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
