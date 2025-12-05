@@ -28,24 +28,14 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
 
-  build-dev:
+  build-pr:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: write
       id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-      - name: Cache docker
-        uses: actions/cache@v4
-        id: cache
-        with:
-          path: |
-            /tmp/dockercache
-          key: docker-cache-${{ runner.os }}-${{ hashFiles('**/Dockerfile') }}
-          restore-keys: |
-            docker-cache-${{ runner.os }}-
       - name: Build docker
         uses: meysam81/build-docker@main
         with:
@@ -54,9 +44,29 @@ jobs:
             COMMIT=${{ github.sha }}
             DATE=${{ github.event.head_commit.timestamp }}
             BUILT_BY=github-actions
-          cache-from: type=local,src=/tmp/dockercache
-          cache-to: type=local,dest=/tmp/dockercache
-          checkout: false
+          cosign: true
+          image-name: ghcr.io/${{ github.repository }}
+          image-extra-tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}
+          kubescape: true
+
+  build-dev:
+    if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+      - name: Build docker
+        uses: meysam81/build-docker@main
+        with:
+          build-args: |
+            VERSION=dev-${{ github.sha }}
+            COMMIT=${{ github.sha }}
+            DATE=${{ github.event.head_commit.timestamp }}
+            BUILT_BY=github-actions
           cosign: true
           image-name: ghcr.io/${{ github.repository }}
           image-extra-tags: |
@@ -98,15 +108,6 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.release-please.outputs.tag_name }}
-      - name: Cache docker
-        uses: actions/cache@v4
-        id: cache
-        with:
-          path: |
-            /tmp/dockercache
-          key: docker-cache-${{ runner.os }}-${{ hashFiles('**/Dockerfile') }}
-          restore-keys: |
-            docker-cache-${{ runner.os }}-
       - name: Install syft
         uses: anchore/sbom-action/download-syft@v0
       - name: Setup Cosign CLI
@@ -129,8 +130,6 @@ jobs:
             COMMIT=${{ github.sha }}
             DATE=${{ github.event.head_commit.timestamp }}
             BUILT_BY=github-actions
-          cache-from: type=local,src=/tmp/dockercache
-          cache-to: type=local,dest=/tmp/dockercache
           checkout: false
           cosign: true
           image-name: ghcr.io/${{ github.repository }}
@@ -142,25 +141,25 @@ jobs:
         name: Run goreleaser
         run: goreleaser release --release-notes CHANGELOG.md --clean
 
-  deploy-grafana:
-    needs: [release-please, build-prod]
-    if: needs.release-please.outputs.releases_created == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
-      - name: Validate dashboard JSON
-        run: |
-          python3 -c "import json; json.load(open('grafana/dashboard.json'))"
-          echo "Dashboard JSON is valid"
-      - name: Upload dashboard to Grafana.com
-        env:
-          GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
-        run: |
-          curl -X POST \
-            -H "Authorization: Bearer $GRAFANA_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d @grafana/dashboard.json \
-            "https://grafana.com/api/dashboards"
+  # deploy-grafana:
+  #   needs: [release-please, build-prod]
+  #   if: needs.release-please.outputs.releases_created == 'true'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v5
+  #       with:
+  #         ref: ${{ needs.release-please.outputs.tag_name }}
+  #     - name: Validate dashboard JSON
+  #       run: |
+  #         python3 -c "import json; json.load(open('grafana/dashboard.json'))"
+  #         echo "Dashboard JSON is valid"
+  #     - name: Upload dashboard to Grafana.com
+  #       env:
+  #         GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+  #       run: |
+  #         curl -X POST \
+  #           -H "Authorization: Bearer $GRAFANA_API_KEY" \
+  #           -H "Content-Type: application/json" \
+  #           -d @grafana/dashboard.json \
+  #           "https://grafana.com/api/dashboards"
