@@ -135,6 +135,10 @@ jobs:
           image-name: ghcr.io/${{ github.repository }}
           image-extra-tags: |
             ghcr.io/${{ github.repository }}:${{ needs.release-please.outputs.tag_name }}
+          metadata-tags: |
+            type=semver,pattern={{major}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}.{{minor}}.{{patch}}
           kubescape: true
       - env:
           GITHUB_TOKEN: ${{ github.token }}
