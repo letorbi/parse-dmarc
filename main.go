@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,9 +11,12 @@ import (
 	"github.com/meysam81/parse-dmarc/internal/api"
 	"github.com/meysam81/parse-dmarc/internal/config"
 	"github.com/meysam81/parse-dmarc/internal/imap"
+	"github.com/meysam81/parse-dmarc/internal/logger"
+	mcpserver "github.com/meysam81/parse-dmarc/internal/mcp"
 	"github.com/meysam81/parse-dmarc/internal/metrics"
 	"github.com/meysam81/parse-dmarc/internal/parser"
 	"github.com/meysam81/parse-dmarc/internal/storage"
+	"github.com/rs/zerolog"
 	"github.com/urfave/cli/v3"
 )
 
@@ -23,6 +25,10 @@ var (
 	commit  = "none"
 	date    = "unknown"
 	builtBy = "unknown"
+
+	log         *zerolog.Logger
+	logLevel    = "info"
+	coloredLogs = false
 )
 
 func main() {
@@ -32,6 +38,10 @@ func main() {
 		Version:               version,
 		EnableShellCompletion: true,
 		Suggest:               true,
+		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
+			log = logger.NewLogger(logLevel, !coloredLogs)
+			return ctx, nil
+		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "config",
@@ -67,6 +77,16 @@ func main() {
 				Value:   true,
 				Sources: cli.EnvVars("PARSE_DMARC_METRICS"),
 			},
+			&cli.BoolFlag{
+				Name:    "mcp",
+				Usage:   "Run as MCP (Model Context Protocol) server over stdio",
+				Sources: cli.EnvVars("PARSE_DMARC_MCP"),
+			},
+			&cli.StringFlag{
+				Name:    "mcp-http",
+				Usage:   "Run MCP server over HTTP/SSE at the specified address (e.g., :8081)",
+				Sources: cli.EnvVars("PARSE_DMARC_MCP_HTTP"),
+			},
 		},
 		Action: run,
 		Commands: []*cli.Command{
@@ -85,7 +105,7 @@ func main() {
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("failed to run")
 	}
 }
 
@@ -96,6 +116,8 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	serveOnly := cmd.Bool("serve-only")
 	fetchInterval := cmd.Int("fetch-interval")
 	metricsEnabled := cmd.Bool("metrics")
+	mcpMode := cmd.Bool("mcp")
+	mcpHTTPAddr := cmd.String("mcp-http")
 
 	if genConfig {
 		if err := config.GenerateSample(configPath); err != nil {
@@ -115,6 +137,11 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}
 	defer func() { _ = store.Close() }()
+
+	// Handle MCP mode
+	if mcpMode || mcpHTTPAddr != "" {
+		return runMCPServer(ctx, store, mcpHTTPAddr)
+	}
 
 	// Initialize metrics if enabled
 	var m *metrics.Metrics
@@ -279,4 +306,25 @@ func fetchReports(cfg *config.Config, store *storage.Storage, m *metrics.Metrics
 
 	log.Printf("Successfully processed %d reports", processed)
 	return nil
+}
+
+func runMCPServer(ctx context.Context, store *storage.Storage, httpAddr string) error {
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	mcpCfg := &mcpserver.Config{
+		Version:  version,
+		HTTPAddr: httpAddr,
+		Logger:   log,
+	}
+
+	server := mcpserver.NewServer(store, mcpCfg)
+
+	// If HTTP address is specified, run HTTP server
+	// Otherwise, run over stdio
+	if httpAddr != "" {
+		return server.RunHTTP(ctx, mcpCfg.HTTPAddr)
+	}
+
+	return server.RunStdio(ctx)
 }
