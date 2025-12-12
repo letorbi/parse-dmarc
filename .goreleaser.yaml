@@ -10,6 +10,10 @@ before:
     - bun run build
     - rm -rf internal/api/dist
     - mv dist internal/api/
+    - pandoc -s -t man README.md -o parse-dmarc.1
+    - go run . completion bash > parse-dmarc.bash
+    - go run . completion zsh > parse-dmarc.zsh
+    - go run . completion fish > parse-dmarc.fish
 
 builds:
   - main: .
@@ -136,8 +140,6 @@ announce:
 
 homebrew_casks:
   - name: parse-dmarc
-    binaries:
-      - parse-dmarc
     repository:
       owner: meysam81
       name: homebrew-tap
@@ -145,4 +147,10 @@ homebrew_casks:
     directory: Formulae
     homepage: https://github.com/meysam81/parse-dmarc
     description: Single-binary, zero-dependency DMARC parser with a modern web dashboard.
-    commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    manpages:
+      - parse-dmarc.1
+    completions:
+      bash: parse-dmarc.bash
+      zsh: parse-dmarc.zsh
+      fish: parse-dmarc.fish
