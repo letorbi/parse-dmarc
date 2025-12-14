@@ -2,7 +2,7 @@
 services:
   parse-dmarc:
     build: .
-    image: ${IMAGE_NAME:-ghcr.io/meysam81/parse-dmarc}
+    image: ${IMAGE_NAME:-meysam81/parse-dmarc}
     environment:
       DATABASE_PATH: /data/parse-dmarc.db
     ports:

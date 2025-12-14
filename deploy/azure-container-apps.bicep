@@ -61,7 +61,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
       containers: [
         {
           name: 'parse-dmarc'
-          image: 'ghcr.io/meysam81/parse-dmarc:latest'
+          image: 'meysam81/parse-dmarc:v1'
           resources: {
             cpu: json('0.25')
             memory: '0.5Gi'
