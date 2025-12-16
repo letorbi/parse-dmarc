@@ -361,7 +361,7 @@ export default {
     var theme = ref("light");
 
     function fetchStatistics() {
-      return fetch("/api/statistics")
+      return fetch("./api/statistics")
         .then(function (response) {
           return response.json();
         })
@@ -374,7 +374,7 @@ export default {
     }
 
     function fetchTopSources() {
-      return fetch("/api/top-sources?limit=10")
+      return fetch("./api/top-sources?limit=10")
         .then(function (response) {
           return response.json();
         })
@@ -387,7 +387,7 @@ export default {
     }
 
     function fetchReports() {
-      return fetch("/api/reports?limit=20")
+      return fetch("./api/reports?limit=20")
         .then(function (response) {
           return response.json();
         })
@@ -400,7 +400,7 @@ export default {
     }
 
     function viewReport(report) {
-      fetch(`/api/reports/${report.id}`)
+      fetch(`./api/reports/${report.id}`)
         .then(function (response) {
           return response.json();
         })

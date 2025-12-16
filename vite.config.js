@@ -8,6 +8,7 @@ var __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   publicDir: path.resolve(__dirname, "./assets"),
+  base: "./",
   plugins: [
     vue(),
     compression({
@@ -39,7 +40,7 @@ export default defineConfig({
     port: 3000,
     host: "::1",
     proxy: {
-      "/api": {
+      "./api": {
         target: "http://localhost:8080",
         changeOrigin: true,
       },
