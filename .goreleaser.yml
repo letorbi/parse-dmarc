@@ -170,7 +170,7 @@ mcp:
   description: Parse DMARC is a lightweight, self-hosted DMARC report parser that automatically fetches email authentication reports from your inbox and visualizes them in a beautiful dashboard—all in a single all-batteries included binary.
   homepage: https://github.com/meysam81/parse-dmarc
   auth:
-    type: none
+    type: github-oidc
   repository:
     url: "https://github.com/meysam81/parse-dmarc.git"
     source: github
