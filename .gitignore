@@ -31,10 +31,6 @@ go.work.sum
 bin/
 internal/api/dist/
 
-# Generated assets (built from SVG sources)
-assets/*.png
-!assets/demo.png
-
 # Database
 *.db
 
@@ -64,3 +60,6 @@ parse-dmarc
 parse-dmarc.1
 .secrets/
 ignore
+.envrc*
+db.sqlite*
+*~

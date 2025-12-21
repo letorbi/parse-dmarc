@@ -1,11 +1,21 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/goccy/go-json"
+)
+
+var (
+	// ErrMissingIMAPHost is returned when IMAP host is not configured
+	ErrMissingIMAPHost = errors.New("IMAP_HOST is required: set via environment variable or config file")
+	// ErrMissingIMAPUsername is returned when IMAP username is not configured
+	ErrMissingIMAPUsername = errors.New("IMAP_USERNAME is required: set via environment variable or config file")
+	// ErrMissingIMAPPassword is returned when IMAP password is not configured
+	ErrMissingIMAPPassword = errors.New("IMAP_PASSWORD is required: set via environment variable or config file")
 )
 
 // Config holds the application configuration
@@ -33,22 +43,29 @@ type DatabaseConfig struct {
 // ServerConfig holds web server configuration
 type ServerConfig struct {
 	Port int    `json:"port" env:"SERVER_PORT" envDefault:"8080"`
-	Host string `json:"host" env:"SERVER_HOST" envDefault:"0.0.0.0"`
+	Host string `json:"host" env:"SERVER_HOST" envDefault:""`
 }
 
 func defaultDBPath() (string, error) {
 	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+	if err != nil || home == "" {
+		return "", errors.New("cannot determine home directory")
 	}
 	return filepath.Join(home, ".parse-dmarc/db.sqlite"), nil
 }
 
+func fallbackDBPath() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", errors.New("cannot determine home directory or current working directory")
+	}
+	return filepath.Join(cwd, ".parse-dmarc/db.sqlite"), nil
+}
+
 func ensureDBPathExists(dbPath string) error {
 	parent := filepath.Dir(dbPath)
-	err := os.MkdirAll(parent, 0755)
-	if err != nil {
-		return err
+	if err := os.MkdirAll(parent, 0755); err != nil {
+		return errors.New("failed to create database directory at " + parent + ": " + err.Error() + " - ensure the path is writable or set DATABASE_PATH environment variable")
 	}
 	return nil
 }
@@ -81,22 +98,38 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.Database.Path == "" {
 		cfg.Database.Path, err = defaultDBPath()
-		if err != nil {
-			return nil, err
+		if err != nil || ensureDBPathExists(cfg.Database.Path) != nil {
+			cfg.Database.Path, err = fallbackDBPath()
+			if err != nil {
+				return nil, err
+			}
+			err = ensureDBPathExists(cfg.Database.Path)
+			if err != nil {
+				return nil, err
+			}
 		}
-	}
-	err = ensureDBPathExists(cfg.Database.Path)
-	if err != nil {
-		return nil, err
 	}
 	if cfg.Server.Port == 0 {
 		cfg.Server.Port = 8080
 	}
-	if cfg.Server.Host == "" {
-		cfg.Server.Host = "0.0.0.0"
-	}
 
 	return &cfg, nil
+}
+
+// Validate checks that all required configuration values are set.
+// Required fields: IMAP host, username, and password.
+// Returns nil if valid, or an error describing the missing configuration.
+func (c *Config) Validate() error {
+	if c.IMAP.Host == "" {
+		return ErrMissingIMAPHost
+	}
+	if c.IMAP.Username == "" {
+		return ErrMissingIMAPUsername
+	}
+	if c.IMAP.Password == "" {
+		return ErrMissingIMAPPassword
+	}
+	return nil
 }
 
 // GenerateSample creates a sample configuration file

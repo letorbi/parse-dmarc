@@ -125,10 +125,11 @@ dockers_v2:
       - meysam81/{{ .ProjectName }}
       - ghcr.io/meysam81/{{ .ProjectName }}
     tags:
-      - "v{{ .Version }}"
-      - "v{{ .Major }}"
-      - "v{{ .Major }}.{{ .Minor }}"
-      - "v{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+      - "{{ if not .IsSnapshot }}v{{ .Version }}{{ end }}"
+      - "{{ if not .IsSnapshot }}v{{ .Major }}{{ end }}"
+      - "{{ if not .IsSnapshot }}v{{ .Major }}.{{ .Minor }}{{ end }}"
+      - "{{ if not .IsSnapshot }}v{{ .Major }}.{{ .Minor }}.{{ .Patch }}{{ end }}"
+      - "{{ .FullCommit }}"
       - "{{ if .IsNightly }}latest{{ end }}"
     extra_files:
       - ./
@@ -139,10 +140,10 @@ dockers_v2:
       "org.opencontainers.image.revision": "{{.FullCommit}}"
       "org.opencontainers.image.source": "{{.GitURL}}"
       "org.opencontainers.image.version": "{{.Version}}"
+      "io.modelcontextprotocol.server.name": "io.github.meysam81/parse-dmarc"
     platforms:
       - linux/amd64
       - linux/arm64
-    disable: "{{ .IsSnapshot }}"
     sbom: "{{ not .Env.DISABLE_SBOM }}"
     build_args:
       VERSION: "{{.Version}}"
@@ -162,6 +163,24 @@ docker_signs:
 docker_digest:
   name_template: "digest.txt"
   disable: "{{ .Env.NO_DIGEST }}"
+
+mcp:
+  name: io.github.meysam81/parse-dmarc
+  title: Parse-DMARC MCP Server
+  description: "Lightweight DMARC parser: auto-fetch email reports, visualize compliance in a single all-in-one app"
+  homepage: https://github.com/meysam81/parse-dmarc
+  auth:
+    type: github-oidc
+  repository:
+    url: "https://github.com/meysam81/parse-dmarc.git"
+    source: github
+    id: "1089959979"
+  packages:
+    - registry_type: oci
+      identifier: "ghcr.io/meysam81/parse-dmarc:{{ .Version }}"
+      transport:
+        type: streamable-http
+  disable: false
 
 report_sizes: true
 
